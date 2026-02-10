@@ -44,3 +44,8 @@ jobs:
       - name: Cleanup
         run: |
           ./build-ffmpeg --cleanup
+      - name: Upload ffmpeg artifact
+        uses: actions/upload-artifact@v4
+        with:
+          name: ffmpeg-macos-arm64
+          path: workspace/bin/ffmpeg    
