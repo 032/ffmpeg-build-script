@@ -9,43 +9,31 @@ on:
 
 jobs:
   build-macos:
-    name: build macOS arm64 ffmpeg
+    name: Build FFmpeg for macOS 15 (M1/Apple Silicon)
     runs-on: macos-15
-    env:
-      ARCH: arm64
-      MACOSX_DEPLOYMENT_TARGET: "13.0"
     steps:
       - name: Checkout code
         uses: actions/checkout@v4
-  
-      - name: Install Homebrew deps
+
+      - name: Build FFmpeg
         run: |
-          brew update
-          brew install \
-            nasm yasm pkg-config \
-            libtool automake cmake \
-            python3
-  
-      - name: Build ffmpeg (arm64, nonfree)
+          # 开启 GPL 和非免费插件以获得最大编解码支持
+          # SKIPINSTALL=yes 防止脚本尝试执行 sudo 安装操作
+          # VERBOSE=yes 方便出错时排查日志
+          SKIPINSTALL=yes VERBOSE=yes ./build-ffmpeg --build --enable-gpl-and-non-free
+
+      - name: Check binary info
         run: |
-          while sleep 300; do echo "=====[ $SECONDS seconds still running ]====="; done &
-          VERBOSE=yes \
-          SKIPINSTALL=yes \
-          ./build-ffmpeg \
-            --build \
-            --enable-gpl-and-non-free
-          kill %1
-  
-      - name: Check ffmpeg arch
-        run: |
+          # 验证是否为 Apple Silicon (arm64) 架构以及链接库情况
           file ./workspace/bin/ffmpeg
-          ./workspace/bin/ffmpeg -buildconf
-  
-      - name: Cleanup
-        run: |
-          ./build-ffmpeg --cleanup
-      - name: Upload ffmpeg artifact
+          otool -L ./workspace/bin/ffmpeg
+          ./workspace/bin/ffmpeg -version
+
+      - name: Upload FFmpeg Binary
         uses: actions/upload-artifact@v4
         with:
-          name: ffmpeg-macos-arm64
-          path: workspace/bin/ffmpeg    
+          name: ffmpeg-macos-m1-static
+          path: |
+            workspace/bin/ffmpeg
+            workspace/bin/ffprobe
+            workspace/bin/ffplay
