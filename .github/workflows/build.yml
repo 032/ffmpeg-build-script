@@ -9,29 +9,38 @@ on:
 
 jobs:
   build-macos:
-    name: build in native macOS
-    runs-on: macos-15  # M1兼容runner
+    name: build macOS arm64 ffmpeg
+    runs-on: macos-15
+    env:
+      ARCH: arm64
+      MACOSX_DEPLOYMENT_TARGET: "13.0"
     steps:
       - name: Checkout code
         uses: actions/checkout@v4
-
-      - name: build ffmpeg
+  
+      - name: Install Homebrew deps
+        run: |
+          brew update
+          brew install \
+            nasm yasm pkg-config \
+            libtool automake cmake \
+            python3
+  
+      - name: Build ffmpeg (arm64, nonfree)
         run: |
           while sleep 300; do echo "=====[ $SECONDS seconds still running ]====="; done &
-          SKIPINSTALL=yes VERBOSE=yes ./build-ffmpeg --enable-gpl-and-non-free --build  # 加non-free参数
+          VERBOSE=yes \
+          SKIPINSTALL=yes \
+          ./build-ffmpeg \
+            --build \
+            --enable-gpl-and-non-free
           kill %1
-      - name: check shared library
+  
+      - name: Check ffmpeg arch
         run: |
-          otool -L ./workspace/bin/ffmpeg
-      - name: test run ffmepg
-        run: |
+          file ./workspace/bin/ffmpeg
           ./workspace/bin/ffmpeg -buildconf
-      - name: clean up
+  
+      - name: Cleanup
         run: |
           ./build-ffmpeg --cleanup
-
-      - name: Upload artifacts  # 加这一步，输出二进制下载
-        uses: actions/upload-artifact@v4
-        with:
-          name: ffmpeg-macos-arm64-nonfree
-          path: ./workspace/bin/*  # 输出FFmpeg二进制
